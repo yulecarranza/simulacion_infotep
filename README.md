@@ -1,35 +1,37 @@
-# Parcial de Simulación: Seguimiento de Objeto (Botella)
+# Control de Humanoide y Sincronización de Objeto (BeerBottle) en Webots
 
-Este proyecto implementa el control de un humanoide en el simulador **Webots**, permitiendo que un objeto (una botella de cerveza) permanezca fijado a su mano derecha durante todo el movimiento, utilizando transformaciones de sistemas de referencia.
-
-## 1. Modificaciones Realizadas
-
-### i. Adición del Nodo de la Botella
-Se agregó un nodo de tipo `BeerBottle` a la escena de Webots. Para poder manipularlo desde el código, se le asignó el DEF `beer_bottle`.
-
-### ii. Implementación del Seguimiento Automático
-Se creó la función `actualizar_posicion_botella()` dentro del controlador. Esta función se ejecuta en cada paso de la simulación (`supervisor.step`), asegurando que la botella se mueva y rote solidariamente con el humanoide.
+Este proyecto implementa un controlador de tipo **Supervisor** para un robot humanoide (`pedestrian1`) en el simulador Webots. El objetivo principal es permitir el desplazamiento del humanoide mediante el teclado, asegurando que un objeto externo (`beer_bottle`) permanezca rígidamente vinculado a su mano derecha mediante transformaciones matriciales.
 
 ---
 
-## 2. Razonamiento Matemático y Lógico
+## 1. Implementación del Entorno
 
-El desafío principal fue convertir las coordenadas locales de la "mano" del humanoide a coordenadas globales del mundo de Webots, ya que el humanoide cambia su posición y ángulo constantemente.
+Para cumplir con los requerimientos de la práctica, se realizaron las siguientes acciones en la escena:
 
-### A. Traslación (Posición de la Botella)
+*   **Adición de Nodo**: Se integró un nodo de tipo `BeerBottle` desde la biblioteca de objetos de Webots (`nodos/webots projects/objects/beerbottle`).
+*   **Identificación por DEF**: Se asignó el nombre DEF `beer_bottle` al objeto para poder manipular su campo de traslación y rotación desde el controlador.
+*   **Posicionamiento Inicial**: Se ubicó manualmente la botella cerca de la mano derecha del humanoide para establecer los valores de *offset* iniciales.
 
-1. **Definición del Offset Local:**
-   $$d_{local} = \begin{bmatrix} OFFSET\_X \\ OFFSET\_Y \\ OFFSET\_Z \end{bmatrix}$$
+---
 
-2. **Cálculo en el Mundo:** Para hallar la posición global, multiplicamos la Matriz de Rotación $R_z(\theta)$ del humanoide por el vector local y sumamos su posición actual ($P_{humanoide}$):
-   $$P_{botella} = P_{humanoide} + (R_z(\theta) \cdot d_{local})$$
+## 2. Razonamiento Matemático y Algebraico
 
-Donde la matriz de rotación en el eje Z es:
-$$R_z(\theta) = \begin{bmatrix} \cos(\theta) & -\sin(\theta) & 0 \\ \sin(\theta) & \cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix}$$
+El núcleo del proyecto consiste en mantener la botella en la mano del peatón independientemente de su movimiento o rotación. Dado que la botella no es un nodo hijo del humanoide, se aplicó **álgebra de sistemas de referencia**.
 
-### B. Rotación (Orientación de la Botella)
-Para que la botella no solo se traslade, sino que también rote cuando el humanoide gira:
+### i. Definición del Vector de Offset
+Se definió un vector constante que representa la posición de la mano respecto al centro de masa del humanoide en su sistema de coordenadas local:
+*   `OFFSET_X = 0.0`
+*   `OFFSET_Y = -0.3` (Hacia la derecha del cuerpo)
+*   `OFFSET_Z = -0.5` (Altura de la mano)
 
-1. Se tomó el eje Y local del humanoide y se transformó al sistema mundial mediante la misma matriz de rotación $R_z$.
-2. Se aplicó un ángulo de inclinación constante de $1.571$ radianes ($90^\circ$) para que la botella se mantenga en posición horizontal (simulando que la sostiene).
+### ii. Transformación de Coordenadas (Local a Global)
+Para que el desplazamiento sea coherente cuando el humanoide gira, el vector de offset debe ser rotado por la misma magnitud que el cuerpo. Se utilizó una **Matriz de Rotación en Z ($R_z$)** para transformar el offset local a coordenadas mundiales:
+
+$$R_z = \begin{bmatrix} \cos(\theta) & -\sin(\theta) & 0 \\ \sin(\theta) & \cos(\theta) & 0 \\ 0 & 0 & 1 \end{bmatrix}$$
+
+En el código, el cálculo se realiza así:
+`pos_botella_mundial = pos_peaton_global + (R_z * offset_local)`.
+
+### iii. Sincronización de Rotación
+Para que la botella mantenga la misma orientación que el humanoide, se extrae el ángulo de rotación $\theta$ del nodo `pedestrian1` y se aplica al nodo `beer_bottle` en cada paso de la simulación, manteniendo ambos sistemas de referencia alineados.
 

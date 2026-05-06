@@ -20,8 +20,8 @@ PASO_ANGULO = math.pi / 36  # 5 grados por paso
 # --- Offset de la botella respecto a la mano/peatón ---
 # Define aquí qué tan lejos de la base del humanoide está la mano
 # (Ajusta estos valores según la posición inicial que le des en Webots)
-OFFSET_X = 0
-OFFSET_Y = -0.25  # Aproximadamente a un lado del cuerpo
+OFFSET_X = 0.0
+OFFSET_Y = -0.3  # Aproximadamente a un lado del cuerpo
 OFFSET_Z = -0.5   # Altura de la mano
 
 # Activar teclado
@@ -65,7 +65,7 @@ def rotar_z(nodo, delta_angulo):
     campo_rotacion.setSFRotation([0, 0, 1, angulo + delta_angulo])
 
 # ---------------------------------------------------------------
-# Actualizar la posición y rotación de la botella en la mano
+# Actualizar la posición de la botella en la mano
 # ---------------------------------------------------------------
 def actualizar_posicion_botella(peaton_nodo, botella_nodo):
     # Obtener posición y ángulo del humanoide
@@ -75,41 +75,30 @@ def actualizar_posicion_botella(peaton_nodo, botella_nodo):
     campo_rotacion = peaton_nodo.getField("rotation")
     _, _, _, angulo = campo_rotacion.getSFRotation()
 
-    # Matriz de rotación del humanoide (en torno al eje Z)
+    # Matriz de rotación del humanoide
     R_z = Matrix([
         [cos(angulo), -sin(angulo), 0],
         [sin(angulo),  cos(angulo), 0],
         [          0,            0, 1]
     ])
 
-    # 1. Posición de la botella
+    # Offset de la botella en el sistema local del humanoide
     offset_local = Matrix([OFFSET_X, OFFSET_Y, OFFSET_Z])
     offset_mundial = R_z * offset_local
 
+    # Nueva posición absoluta de la botella
     pos_botella_x = pos[0] + float(offset_mundial[0])
     pos_botella_y = pos[1] + float(offset_mundial[1])
     pos_botella_z = pos[2] + float(offset_mundial[2])
 
+    # Aplicar al nodo de la botella
     campo_botella_traslacion = botella_nodo.getField("translation")
     campo_botella_traslacion.setSFVec3f([pos_botella_x, pos_botella_y, pos_botella_z])
 
-    # 2. Rotación de la botella (orientación del humanoide + ángulo de inclinación)
-    # Transformamos el vector del eje Y local al espacio mundial
-    eje_local = Matrix([0, 1, 0])
-    eje_mundial = R_z * eje_local
-
-    # Ángulo de inclinación horizontal en radianes
-    angulo_inclinacion = 1.571  # 90 grados
-
-    # Aplicamos la nueva orientación al nodo
+    # Sincronizar la rotación para que apunte en la misma dirección
     campo_botella_rotacion = botella_nodo.getField("rotation")
-    campo_botella_rotacion.setSFRotation([
-        float(eje_mundial[0]), 
-        float(eje_mundial[1]), 
-        float(eje_mundial[2]), 
-        angulo_inclinacion
-    ])
-    
+    campo_botella_rotacion.setSFRotation([0, 0, 1, angulo])
+
 # ---------------------------------------------------------------
 # Instrucciones en consola
 # ---------------------------------------------------------------
